@@ -35,7 +35,9 @@ function createGeoPopup() {
                 width,
                 height,
                 left,
-                top
+                top,
+                focused: true,
+                state: "normal"
             },
             (window) => {
                 if (window) {

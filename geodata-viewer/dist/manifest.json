@@ -4,20 +4,22 @@
     "version": "1.0",
     "description": "Load and visualize geospatial data",
     "permissions": [
-        "storage",
-        "activeTab",
-        "scripting",
         "windows",
         "system.display"
     ],
     "host_permissions": [
         "<all_urls>"
     ],
+    "icons": {
+        "16": "icon.png",
+        "48": "icon.png",
+        "128": "icon.png"
+    },
     "background": {
         "service_worker": "background.js"
     },
     "action": {
-        "default_title": "Open Geo Viewer"
+        "default_title": "GeoData Viewer"
     },
     "web_accessible_resources": [
         {

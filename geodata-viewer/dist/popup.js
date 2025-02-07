@@ -32832,12 +32832,16 @@ function logMessage(message, isError = false) {
     logsElement.scrollTop = logsElement.scrollHeight; // Auto-scroll to the latest log
 }
 
+const colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33A8"];
+let colorIndex = 0;
+
 class GeoDataViewer {
     constructor() {
         this.db = null;
         this.conn = null;
         this.map = null;
         this.init();
+        this.layers = {};  // Store layers by filename
     }
 
     async init() {
@@ -32877,8 +32881,10 @@ class GeoDataViewer {
     initMap() {
         logMessage('Initializing map...');
         this.map = leaflet__WEBPACK_IMPORTED_MODULE_0___default().map('map').setView([0, 0], 2);
-        leaflet__WEBPACK_IMPORTED_MODULE_0___default().tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+        leaflet__WEBPACK_IMPORTED_MODULE_0___default().tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
         }).addTo(this.map);
         logMessage('Map initialized.');
     }
@@ -32886,29 +32892,107 @@ class GeoDataViewer {
     setupFileInput() {
         logMessage('Setting up file input listener...');
         const fileInput = document.getElementById('fileInput');
+
         fileInput.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            logMessage(`File selected: ${file.name}`);
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            logMessage(`Selected ${files.length} files.`);
 
             try {
-                if (file.name.endsWith('.geojson') || file.name.endsWith('.json')) {
-                    await this.processGeoJSON(file);
-                } else if (file.name.endsWith('.csv')) {
-                    await this.processCSV(file);
-                } else if (file.name.endsWith('.parquet')) {
-                    await this.processParquet(file);
-                } else if (file.name.endsWith('.shp') || file.name.endsWith('.gpkg') || file.name.endsWith('.fgb')) {
-                    await this.processSpatialFile(file);
-                } else {
-                    logMessage('Unsupported file format.', true);
-                    console.warn('Unsupported file format.');
+                const geojsonFiles = [];
+                const csvFiles = [];
+                const parquetFiles = [];
+                const spatialFiles = [];
+
+                for (const file of files) {
+                    if (file.name.endsWith('.geojson') || file.name.endsWith('.json')) {
+                        geojsonFiles.push(file);
+                    } else if (file.name.endsWith('.csv')) {
+                        csvFiles.push(file);
+                    } else if (file.name.endsWith('.parquet')) {
+                        parquetFiles.push(file);
+                    } else if (
+                        file.name.endsWith('.shp') || file.name.endsWith('.shx') || file.name.endsWith('.dbf') ||
+                        file.name.endsWith('.prj') || file.name.endsWith('.cpg') || file.name.endsWith('.gpkg') ||
+                        file.name.endsWith('.fgb')
+                    ) {
+                        spatialFiles.push(file);
+                    } else {
+                        logMessage(`Unsupported file format: ${file.name}`, true);
+                        console.warn(`Unsupported file format: ${file.name}`);
+                    }
                 }
+
+                // Process files by type
+                for (const file of geojsonFiles) await this.processGeoJSON(file);
+                for (const file of csvFiles) await this.processCSV(file);
+                for (const file of parquetFiles) await this.processParquet(file);
+                if (spatialFiles.length > 0) await this.processSpatialFile(spatialFiles); // Process spatial files as a batch
             } catch (error) {
-                logMessage(`Error processing file: ${error.message}`, true);
-                console.error('Error processing file:', error);
+                logMessage(`Error processing files: ${error.message}`, true);
+                console.error('Error processing files:', error);
             }
         });
+    }
+
+    async processCSV(file) {
+        logMessage(`Processing CSV file: ${file.name}...`);
+
+        try {
+            // Read CSV file
+            const text = await file.text();
+            await this.db.registerFileText('csvfile.csv', text);
+            logMessage('Registered CSV file in DuckDB.');
+            console.log(text);
+
+            const csv = await this.conn.query(`SELECT * FROM read_csv_auto('csvfile.csv');`);
+
+            if (csv.length === 0) {
+                logMessage(`No data found in ${file.name}`, true);
+                return;
+            }
+
+            logMessage(`CSV loaded with ${csv.length} rows.`);
+
+            // Convert the result to an array
+            const data = csv.toArray();
+
+            // Detect Latitude and Longitude columns
+            const firstRow = data[0];
+            const columns = Object.keys(firstRow);
+
+            const latFields = ['lat', 'latitude', 'y', 'ycoord'];
+            const lngFields = ['lng', 'lon', 'longitude', 'x', 'xcoord'];
+
+            const latColumn = columns.find(col => latFields.includes(col.toLowerCase()));
+            const lngColumn = columns.find(col => lngFields.includes(col.toLowerCase()));
+
+            if (!latColumn || !lngColumn) {
+                logMessage(`Could not detect latitude/longitude fields in ${file.name}`, true);
+                return;
+            }
+
+            logMessage(`Detected latitude: ${latColumn}, longitude: ${lngColumn}`);
+
+            // Drop existing table if necessary
+            await this.conn.query(`DROP TABLE IF EXISTS geodata;`);
+
+            // Create a new table with point geometry
+            await this.conn.query(`
+                CREATE TABLE geodata AS 
+                SELECT ST_Point(${lngColumn}, ${latColumn}) AS geom, * EXCLUDE ${latColumn}, ${lngColumn} 
+                FROM read_csv_auto('csvfile.csv');`);
+
+            logMessage(`CSV data loaded into DuckDB as geospatial table.`);
+
+            // Visualize the points on the map
+            await this.visualizeGeoJSON();
+
+        } catch (error) {
+            logMessage(`Error processing CSV: ${error.message}`, true);
+            console.error('Error processing CSV:', error);
+        }
     }
 
     async processGeoJSON(file) {
@@ -32924,81 +33008,195 @@ class GeoDataViewer {
             await this.conn.query(`CREATE TABLE geodata AS SELECT * FROM ST_Read('/tmp/geojson.json');`);
             logMessage('GeoJSON data successfully loaded into DuckDB.');
 
-            await this.visualizeGeoJSON();
+            await this.visualizeGeoJSON(file.name);
         } catch (error) {
             logMessage(`Error while processing GeoJSON: ${error.message}`, true);
             console.error('Error while processing GeoJSON:', error);
         }
     }
 
-    async processSpatialFile(file) {
-        logMessage(`Processing spatial file: ${file.name}...`);
+    async processSpatialFile(fileHandles) {
+        const shpFile = fileHandles.find(file => file.name.endsWith('.shp'));
+        const gpkgFile = fileHandles.find(file => file.name.endsWith('.gpkg'));
+        const fgbFile = fileHandles.find(file => file.name.endsWith('.fgb'));
+
+        if (!shpFile && !gpkgFile && !fgbFile) {
+            logMessage("No valid spatial file found.", true);
+            return;
+        }
+
+        // Determine main file name (excluding extension)
+        const fileName = shpFile ? shpFile.name.split(".")[0] :
+            gpkgFile ? gpkgFile.name.split(".")[0] :
+                fgbFile ? fgbFile.name.split(".")[0] : "unknown";
+
+        logMessage(`Processing spatial file: ${fileName}...`);
 
         try {
-            const fileHandles = await window.showOpenFilePicker({
-                multiple: true,
-                types: [
-                    {
-                        description: "Spatial Files",
-                        accept: {
-                            "application/octet-stream": [".shp", ".shx", ".dbf", ".gpkg", ".fgb"],
-                        },
-                    },
-                ],
-            });
-
+            // Read file contents
             const fileMap = new Map();
-            for (const handle of fileHandles) {
-                const file = await handle.getFile();
+            for (const file of fileHandles) {
+                logMessage(`Reading file: ${file.name}...`);
                 const buffer = await file.arrayBuffer();
-                fileMap.set(file.name, buffer);
+                const uint8Array = new Uint8Array(buffer);
+
+                if (uint8Array.length === 0) {
+                    logMessage(`Warning: ${file.name} appears to be empty!`, true);
+                }
+
+                fileMap.set(file.name, uint8Array);
+                logMessage(`Successfully read ${file.name}, size: ${uint8Array.length} bytes`);
             }
 
-            for (const [filename, buffer] of fileMap.entries()) {
-                await this.db.registerFileBuffer(`/tmp/${filename}`, buffer);
-                logMessage(`Registered file: /tmp/${filename}`);
+            // Register all files with DuckDB
+            for (const [filename, uint8Array] of fileMap.entries()) {
+                logMessage(`Registering file with DuckDB: ${filename}`);
+                await this.db.registerFileBuffer(filename, uint8Array);
+                logMessage(`Successfully registered ${filename}`);
             }
 
+            // Drop table if it exists
+            logMessage("Dropping existing table if it exists...");
             await this.conn.query(`DROP TABLE IF EXISTS geodata;`);
-            await this.conn.query(`CREATE TABLE geodata AS SELECT * FROM ST_Read('/tmp/${file.name}');`);
-            logMessage(`${file.name} successfully loaded into DuckDB.`);
+            logMessage("Dropped table (if existed).");
 
-            await this.visualizeGeoJSON();
+            // Load spatial data
+            if (shpFile) {
+                logMessage(`Executing ST_Read on ${shpFile.name}...`);
+                await this.conn.query(`CREATE TABLE geodata AS SELECT * FROM ST_Read('${shpFile.name}');`);
+            } else if (gpkgFile) {
+                logMessage(`Executing ST_Read on ${gpkgFile.name}...`);
+                await this.conn.query(`CREATE TABLE geodata AS SELECT * FROM ST_Read('${gpkgFile.name}');`);
+            } else if (fgbFile) {
+                logMessage(`Executing ST_Read on ${fgbFile.name}...`);
+                await this.conn.query(`CREATE TABLE geodata AS SELECT * FROM ST_Read('${fgbFile.name}');`);
+            }
+
+            logMessage(`${fileName} successfully loaded into DuckDB.`);
+
+            // Visualize loaded spatial data
+            await this.visualizeGeoJSON(fileName);
         } catch (error) {
-            logMessage(`Error while processing ${file.name}: ${error.message}`, true);
-            console.error(`Error while processing ${file.name}:`, error);
+            logMessage(`Error while processing ${fileName}: ${error.message}`, true);
+            console.error(`Error while processing ${fileName}:`, error);
         }
     }
 
-    async visualizeGeoJSON() {
+    async visualizeGeoJSON(filename) {
         try {
             logMessage('Fetching GeoJSON data for visualization...');
             const result = await this.conn.query(`
-                SELECT ST_AsGeoJSON(geom) as geojson 
-                FROM geodata 
-                LIMIT 1000;
-            `);
+            SELECT *, ST_AsGeoJSON(geom) AS geojson 
+            FROM geodata 
+            LIMIT 9999999;
+        `);
 
-            logMessage(`Fetched ${result.length} features.`);
-            this.map.eachLayer((layer) => {
-                if (layer instanceof (leaflet__WEBPACK_IMPORTED_MODULE_0___default().GeoJSON)) {
-                    this.map.removeLayer(layer);
+            // Remove previous GeoJSON layers
+            // this.map.eachLayer((layer) => {
+            //     if (layer instanceof L.GeoJSON) {
+            //         this.map.removeLayer(layer);
+            //     }
+            // });
+
+            // Convert data to GeoJSON
+            const features = result.toArray().map(row => ({
+                type: "Feature",
+                geometry: JSON.parse(row.geojson),  // Convert geometry to GeoJSON
+                properties: Object.fromEntries(
+                    Object.entries(row).filter(([key]) => key !== "geojson" && key !== "geom") // Exclude geom and geojson fields
+                )
+            }));
+            console.log(features);
+            logMessage(`Fetched ${features.length} features.`);
+
+            // Create a random color for the layer
+            const randomColor = `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+
+            // Cycle through colors
+            const currentColor = colors[colorIndex % colors.length];
+            colorIndex++;
+
+            // Define the new GeoJSON layer
+            const geojsonLayer = leaflet__WEBPACK_IMPORTED_MODULE_0___default().geoJSON(
+                { type: 'FeatureCollection', features: features },
+                {
+                    style: { color: randomColor, weight: 2, opacity: 0.8 },
+                    pointToLayer: (feature, latlng) => {
+                        return leaflet__WEBPACK_IMPORTED_MODULE_0___default().circleMarker(latlng, {
+                            radius: 3,  // Adjust size as needed
+                            // fillColor: currentColor,
+                            // color: "#fff000",  // Outline color
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 1
+                        });
+                    },
+                    onEachFeature: (feature, layer) => {
+                        console.log("Feature properties:", feature.properties); // Debugging
+                        let popupContent = "<b>Attributes:</b><br><div class='popup-scroll'>";
+                        if (feature.properties && Object.keys(feature.properties).length > 0) {
+                            Object.entries(feature.properties).forEach(([key, value]) => {
+                                popupContent += `<b>${key}</b>: ${value} <br>`;
+                            });
+                        } else {
+                            popupContent += "No attributes available";
+                        }
+                        layer.bindPopup(popupContent);
+                    }
                 }
-            });
+            ).addTo(this.map);
 
-            const features = result.toArray().map(row => JSON.parse(row.geojson));
-            const geojsonLayer = leaflet__WEBPACK_IMPORTED_MODULE_0___default().geoJSON({
-                type: 'FeatureCollection',
-                features: features
-            }).addTo(this.map);
+            // Store in layers object
+            this.layers[filename] = geojsonLayer;
 
             this.map.fitBounds(geojsonLayer.getBounds());
-            logMessage('GeoJSON data visualized.');
+            this.updateLayerPanel();
+            logMessage(`GeoJSON for ${filename} visualized with color ${currentColor}.`);
         } catch (error) {
             logMessage(`Error while visualizing GeoJSON: ${error.message}`, true);
             console.error('Error while visualizing GeoJSON:', error);
         }
     }
+
+    updateLayerPanel() {
+        if (this.layerControl) {
+            this.map.removeControl(this.layerControl);
+        }
+
+        this.layerControl = leaflet__WEBPACK_IMPORTED_MODULE_0___default().control({ position: "topright" });
+
+        this.layerControl.onAdd = (map) => {
+            const div = leaflet__WEBPACK_IMPORTED_MODULE_0___default().DomUtil.create("div", "layer-control-panel");
+            div.innerHTML = "<h3>Layers</h3>";
+
+            Object.keys(this.layers).forEach(layerName => {
+                const layerDiv = document.createElement("div");
+                layerDiv.className = "layer-item";
+                layerDiv.innerHTML = `
+                    <input type="checkbox" checked id="${layerName}-toggle" />
+                    <label for="${layerName}-toggle">${layerName}</label>
+                `;
+
+                // Toggle event
+                layerDiv.querySelector("input").addEventListener("change", (event) => {
+                    const layer = this.layers[layerName];
+                    if (event.target.checked) {
+                        layer.addTo(this.map);
+                    } else {
+                        this.map.removeLayer(layer);
+                    }
+                });
+
+                div.appendChild(layerDiv);
+            });
+
+            return div;
+        };
+
+        this.layerControl.addTo(this.map);
+    }
+
+
 }
 
 // Initialize the viewer when the popup loads
@@ -33006,6 +33204,11 @@ document.addEventListener('DOMContentLoaded', () => {
     new GeoDataViewer();
 });
 
+document.getElementById("clearLogs").addEventListener("click", clearLogs);
+
+function clearLogs() {
+    document.getElementById("logs").innerHTML = "";
+}
 })();
 
 /******/ })()

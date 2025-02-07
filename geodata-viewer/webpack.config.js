@@ -20,6 +20,7 @@ module.exports = (env, argv) => {
                 patterns: [
                     { from: "src/manifest.json", to: "manifest.json" },
                     { from: "src/popup.html", to: "popup.html" },
+                    { from: "src/icons/3.png", to: "icon.png" },
                     { from: "node_modules/@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm", to: "lib/duckdb-mvp.wasm" },
                     { from: "node_modules/@duckdb/duckdb-wasm/dist/duckdb-eh.wasm", to: "lib/duckdb-eh.wasm" },
                     { from: "node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js", to: "lib/duckdb-browser-mvp.worker.js" },
