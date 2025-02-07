@@ -1,0 +1,38 @@
+{
+    "manifest_version": 3,
+    "name": "GeoData Viewer",
+    "version": "1.0",
+    "description": "Load and visualize geospatial data",
+    "permissions": [
+        "storage",
+        "activeTab",
+        "scripting",
+        "windows",
+        "system.display"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_title": "Open Geo Viewer"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "lib/duckdb-mvp.wasm",
+                "lib/duckdb-eh.wasm",
+                "lib/duckdb-browser-mvp.worker.js",
+                "lib/duckdb-browser-eh.worker.js"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'"
+    }
+}
