@@ -1,0 +1,105 @@
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Elasticsearch Explorer</title><script src="popup.js" defer="defer"></script><style>body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+    }
+
+    .container {
+      max-width: 100%;
+    }
+
+    .connection-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 8px 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      text-align: left;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f8f9fa;
+      font-weight: bold;
+    }
+
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+
+    .clickable {
+      cursor: pointer;
+      color: #007bff;
+      text-decoration: underline;
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .healthy {
+      color: #28a745;
+    }
+
+    .unhealthy {
+      color: #dc3545;
+    }
+
+    .json-expander {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 5px;
+      color: green;
+      background-color: whitesmoke;
+    }
+
+    .json-content {
+      background: #f4f4f4;
+      border-left: 3px solid #007bff;
+      padding: 5px;
+      margin-top: 5px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }</style><script defer="defer" src="../popup.js"></script></head><body><div class="container"><div class="connection-form"><h2>Connect to Elasticsearch</h2><input id="host" placeholder="Host (e.g. localhost)"> <input id="port" placeholder="Port (e.g. 9200)"> <input id="username" placeholder="Username (optional)"> <input type="password" id="password" placeholder="Password (optional)"> <button id="connectBtn">Connect</button></div><div class="index-list-container" style="display: none;"><h3>Available Indices</h3><table id="indexTable"><thead><tr><th>Index Name</th><th>Docs</th><th>Size</th><th>Health</th></tr></thead><tbody id="indexList"></tbody></table></div><div class="results-container" style="display: none;"><button id="backToIndexes">← Back</button><h3>Search Results</h3><table id="resultsTable"></table><div class="pagination"><button id="prevPage" disabled="disabled">Previous</button> <span id="pageNumber">Page 1 of <span id="totalPages">?</span></span> <button id="nextPage">Next</button></div><p id="totalDocs" style="text-align: center; font-size: 14px;"></p></div><button id="downloadCurrentTable">Download Current Table</button> <button id="downloadEntireIndex">Download Entire Index</button></div></body></html>

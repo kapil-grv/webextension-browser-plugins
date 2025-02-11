@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Elasticsearch Explorer",
+  "version": "1.0.0",
+  "description": "A simple Elasticsearch index explorer",
+  "permissions": [],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "Open Elasticsearch Explorer"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'"
+  }
+}
