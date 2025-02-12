@@ -62,7 +62,7 @@ class GeoDataViewer {
 
             // Verify available functions
             const drivers = await this.conn.query(`SELECT * FROM ST_Drivers();`);
-            logMessage(`Drivers available: ${JSON.stringify(drivers)}`);
+            // logMessage(`Drivers available: ${JSON.stringify(drivers)}`);
 
             // Initialize map
             this.initMap();
@@ -85,7 +85,6 @@ class GeoDataViewer {
     }
 
     setupFileInput() {
-        logMessage('Setting up file input listener...');
         const fileInput = document.getElementById('fileInput');
 
         fileInput.addEventListener('change', async (e) => {
@@ -129,6 +128,7 @@ class GeoDataViewer {
                 console.error('Error processing files:', error);
             }
         });
+        logMessage('Listening to file uploads (Please upload all related files if uploading Shapefile)...');
     }
 
     async processCSV(file) {
