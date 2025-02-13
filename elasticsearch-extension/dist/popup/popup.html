@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Elasticsearch Explorer</title><script src="popup.js" defer="defer"></script><style>body {
+<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Elasticsearch Explorer</title><script src="../popup.js" defer="defer"></script><style>body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 16px;
@@ -102,4 +102,28 @@
       margin-top: 5px;
       white-space: pre-wrap;
       font-family: monospace;
-    }</style><script defer="defer" src="../popup.js"></script></head><body><div class="container"><div class="connection-form"><h2>Connect to Elasticsearch</h2><input id="host" placeholder="Host (e.g. localhost)"> <input id="port" placeholder="Port (e.g. 9200)"> <input id="username" placeholder="Username (optional)"> <input type="password" id="password" placeholder="Password (optional)"> <button id="connectBtn">Connect</button></div><div class="index-list-container" style="display: none;"><h3>Available Indices</h3><table id="indexTable"><thead><tr><th>Index Name</th><th>Docs</th><th>Size</th><th>Health</th></tr></thead><tbody id="indexList"></tbody></table></div><div class="results-container" style="display: none;"><button id="backToIndexes">← Back</button><h3>Search Results</h3><table id="resultsTable"></table><div class="pagination"><button id="prevPage" disabled="disabled">Previous</button> <span id="pageNumber">Page 1 of <span id="totalPages">?</span></span> <button id="nextPage">Next</button></div><p id="totalDocs" style="text-align: center; font-size: 14px;"></p></div><button id="downloadCurrentTable">Download Current Table</button> <button id="downloadEntireIndex">Download Entire Index</button></div></body></html>
+    }
+
+    .download-btn {
+      margin-left: 8px;
+      padding: 2px 6px;
+      background-color: #28a745;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .download-btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .back-button {
+      margin-bottom: 16px;
+    }</style><script defer="defer" src="../popup.js"></script></head><body><div class="container"><div class="connection-form"><h2>Connect to Elasticsearch</h2><select id="protocol"><option value="http">HTTP</option><option value="https">HTTPS</option></select> <input id="host" placeholder="Host (e.g. localhost)"> <input id="port" placeholder="Port (e.g. 9200)"> <input id="username" placeholder="Username (optional)"> <input type="password" id="password" placeholder="Password (optional)"> <button id="connectBtn">Connect</button></div><div class="index-list-container" style="display: none;"><button id="backToMain" class="back-button">← Back</button><h3>Available Indices</h3><table id="indexTable"><thead><tr><th>Index Name</th><th>Docs</th><th>Size</th><th>Health</th></tr></thead><tbody id="indexList"></tbody></table></div><div class="results-container" style="display: none;"><button id="backToIndexes" class="back-button">← Back</button><h3>Search Results</h3><table id="resultsTable"></table><div class="pagination"><button id="prevPage" disabled="disabled">Previous</button> <span id="pageNumber">Page 1 of <span id="totalPages">?</span></span> <button id="nextPage">Next</button></div><p id="totalDocs" style="text-align: center; font-size: 14px;"></p></div></div></body></html>

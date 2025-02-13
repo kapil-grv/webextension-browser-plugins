@@ -3,10 +3,11 @@
   "name": "Elasticsearch Explorer",
   "version": "1.0.0",
   "description": "A simple Elasticsearch index explorer",
-  "permissions": [],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
   "action": {
     "default_title": "Open Elasticsearch Explorer"
   },

@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Elasticsearch Explorer</title>
-  <script src="popup.js" defer></script>
+  <script src="../popup.js" defer></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -112,6 +112,30 @@
       white-space: pre-wrap;
       font-family: monospace;
     }
+
+    .download-btn {
+      margin-left: 8px;
+      padding: 2px 6px;
+      background-color: #28a745;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .download-btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .back-button {
+      margin-bottom: 16px;
+    }
   </style>
 </head>
 
@@ -119,6 +143,10 @@
   <div class="container">
     <div class="connection-form">
       <h2>Connect to Elasticsearch</h2>
+      <select id="protocol">
+        <option value="http">HTTP</option>
+        <option value="https">HTTPS</option>
+      </select>
       <input type="text" id="host" placeholder="Host (e.g. localhost)">
       <input type="text" id="port" placeholder="Port (e.g. 9200)">
       <input type="text" id="username" placeholder="Username (optional)">
@@ -127,6 +155,7 @@
     </div>
 
     <div class="index-list-container" style="display: none;">
+      <button id="backToMain" class="back-button">← Back</button>
       <h3>Available Indices</h3>
       <table id="indexTable">
         <thead>
@@ -142,7 +171,7 @@
     </div>
 
     <div class="results-container" style="display: none;">
-      <button id="backToIndexes">← Back</button>
+      <button id="backToIndexes" class="back-button">← Back</button>
       <h3>Search Results</h3>
       <table id="resultsTable"></table>
       <div class="pagination">
